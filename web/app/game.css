@@ -1,0 +1,4847 @@
+/* =====================================================================
+   AI 卧底局 · 地下加密赌局（Crypto Noir）
+   黑金 + 猩红 + 赌桌绿呢。牌桌隐喻：玩家是一张张盖住的牌，卧底是 Joker。
+   ===================================================================== */
+
+body:has(.game-root)::before,
+body:has(.game-root)::after {
+  display: none;
+}
+
+.game-root {
+  --font-display: var(--font-sans);
+  /* ====== 色彩 ====== */
+  --gr-bg: #0b0806;
+  --gr-bg-2: #110a07;
+  --gr-felt: #0d1b15;
+  --gr-felt-2: #122a20;
+  --gr-gold: #e6b84c;
+  --gr-gold-bright: #f4cf74;
+  --gr-gold-soft: rgba(230, 184, 76, 0.13);
+  --gr-gold-dim: #8a6f33;
+  --gr-crimson: #ff4655;
+  --gr-crimson-soft: rgba(255, 70, 85, 0.14);
+  --gr-cream: #f0e7d6;
+  --gr-cream-dim: #a89e8b;
+  --gr-cream-faint: #6d6455;
+  --gr-line: rgba(230, 184, 76, 0.15);
+  --gr-line-strong: rgba(230, 184, 76, 0.34);
+
+  /* ====== 间距（4 的倍数，6 个梯度） ====== */
+  --gr-sp-1: 4px;
+  --gr-sp-2: 8px;
+  --gr-sp-3: 12px;
+  --gr-sp-4: 16px;
+  --gr-sp-5: 20px;
+  --gr-sp-6: 24px;
+  --gr-sp-7: 32px;
+  --gr-sp-8: 40px;
+  --gr-sp-9: 56px;
+
+  /* ====== 圆角 ====== */
+  --gr-r-sm: 8px;
+  --gr-r-md: 12px;
+  --gr-r-lg: 16px;
+  --gr-r-xl: 20px;
+  --gr-r-pill: 999px;
+
+  /* ====== 阴影 ====== */
+  --gr-sh-1: 0 12px 26px rgba(0, 0, 0, 0.35);
+  --gr-sh-2: 0 20px 50px rgba(0, 0, 0, 0.4);
+  --gr-sh-3: 0 30px 70px rgba(0, 0, 0, 0.7);
+  --gr-sh-gold: 0 0 34px rgba(230, 184, 76, 0.3);
+
+  /* ====== 字体层级 ====== */
+  --gr-fz-eyebrow: 0.7rem;
+  --gr-fz-label: 0.78rem;
+  --gr-fz-body: 0.95rem;
+  --gr-fz-h3: 1.1rem;
+  --gr-fz-h2: 1.4rem;
+  --gr-fz-h1: clamp(2.6rem, 9vw, 4.2rem);
+
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+  color: var(--gr-cream);
+  font-family: var(--font-sans);
+  line-height: 1.7;
+  background:
+    radial-gradient(1100px 720px at 50% -12%, rgba(230, 184, 76, 0.12), transparent 55%),
+    radial-gradient(820px 640px at 104% 108%, rgba(255, 70, 85, 0.08), transparent 52%),
+    radial-gradient(720px 560px at -6% 104%, rgba(18, 42, 32, 0.95), transparent 60%),
+    var(--gr-bg);
+}
+
+.game-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 62% 46% at 50% 30%, rgba(230, 184, 76, 0.07), transparent 62%),
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.5));
+}
+
+.game-root::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.gr-container {
+  position: relative;
+  z-index: 1;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 56px 22px 90px;
+}
+
+/* 宽版容器：首页 + 大厅（更宽以承载双栏与卡片网格） */
+.gr-container.wide {
+  max-width: 960px;
+}
+
+/* ---------- 通用 ---------- */
+.gr-spinner {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--gr-line-strong);
+  border-top-color: var(--gr-gold);
+  border-radius: 50%;
+  animation: grSpin 0.8s linear infinite;
+  vertical-align: -3px;
+  margin-right: 9px;
+}
+
+@keyframes grSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gr-status {
+  text-align: center;
+  color: var(--gr-cream-dim);
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  padding: 18px;
+  letter-spacing: 0.04em;
+}
+
+.gr-error {
+  color: var(--gr-crimson);
+  background: var(--gr-crimson-soft);
+  border: 1px solid rgba(255, 70, 85, 0.32);
+  border-radius: 12px;
+  padding: 16px 22px;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  text-align: center;
+  margin-top: 24px;
+}
+
+.gr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gr-gold);
+  border: 1px solid var(--gr-line);
+  border-radius: 999px;
+  padding: 7px 16px;
+  margin-bottom: 22px;
+  background: rgba(230, 184, 76, 0.05);
+}
+
+.gr-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gr-crimson);
+  box-shadow: 0 0 12px var(--gr-crimson);
+  animation: grPulse 2s ease-in-out infinite;
+}
+
+@keyframes grPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.gr-title {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: clamp(2.6rem, 9vw, 4.2rem);
+  font-weight: 700;
+  line-height: 1.04;
+  margin: 0 0 14px;
+  letter-spacing: 0.02em;
+  color: var(--gr-cream);
+  text-shadow: 0 0 40px rgba(230, 184, 76, 0.25);
+}
+
+.gr-title-spy {
+  color: var(--gr-crimson);
+  text-shadow: 0 0 34px rgba(255, 70, 85, 0.4);
+}
+
+.gr-sub {
+  color: var(--gr-cream-dim);
+  margin: 0 0 26px;
+  font-size: 1.02rem;
+}
+
+/* 主按钮：金筹码 */
+.gr-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--gr-gold);
+  border-radius: 12px;
+  padding: 18px 40px;
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  color: #1a1203;
+  background: linear-gradient(180deg, #f4cf74, #dca73c);
+  box-shadow:
+    0 0 0 5px rgba(230, 184, 76, 0.08),
+    0 0 34px rgba(230, 184, 76, 0.3),
+    0 14px 30px rgba(0, 0, 0, 0.5);
+  transition: filter 0.18s ease, transform 0.08s ease, box-shadow 0.18s ease;
+}
+
+.gr-cta:hover {
+  filter: brightness(1.06);
+}
+
+.gr-cta:active {
+  transform: translateY(1px);
+}
+
+.gr-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+
+.gr-cta.small {
+  padding: 14px 30px;
+  font-size: 1.05rem;
+  width: auto;
+  flex: 1;
+}
+
+.gr-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 12px;
+  padding: 14px 30px;
+  font-family: var(--font-sans);
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  color: var(--gr-cream-dim);
+  background: transparent;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.gr-ghost:hover {
+  border-color: var(--gr-gold);
+  color: var(--gr-gold);
+}
+
+/* ---------- 首页（创建/加入） ---------- */
+.gr-home {
+  text-align: center;
+  padding-top: 16px;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes grRise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gr-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--gr-line);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  margin-bottom: 18px;
+}
+
+.gr-tabs button {
+  border: none;
+  background: transparent;
+  color: var(--gr-cream-dim);
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 8px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gr-tabs button.on {
+  color: #1a1203;
+  background: var(--gr-gold);
+}
+
+.gr-panel {
+  text-align: left;
+  background: rgba(13, 27, 21, 0.55);
+  border: 1px solid var(--gr-line);
+  border-radius: 16px;
+  padding: 26px 26px 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gr-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gr-cream-faint);
+  margin-top: 6px;
+}
+
+.gr-input {
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--gr-cream);
+  font-family: var(--font-mono);
+  font-size: 0.98rem;
+  padding: 14px 16px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gr-input.code {
+  font-size: 1.4rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.gr-input:focus {
+  border-color: var(--gr-gold);
+  box-shadow: 0 0 0 3px rgba(230, 184, 76, 0.15);
+}
+
+.gr-input::placeholder {
+  color: var(--gr-cream-faint);
+}
+
+.gr-seg {
+  display: flex;
+  gap: 6px;
+}
+
+.gr-seg button {
+  flex: 1;
+  border: 1px solid var(--gr-line);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--gr-cream-dim);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gr-seg button.on {
+  color: var(--gr-gold);
+  border-color: var(--gr-gold);
+  background: var(--gr-gold-soft);
+}
+
+.gr-hint {
+  font-size: 0.84rem;
+  color: var(--gr-cream-faint);
+}
+
+.gr-panel .gr-cta {
+  margin-top: 8px;
+}
+
+/* ---------- 大厅 ---------- */
+.gr-lobby {
+  text-align: center;
+  padding-top: 16px;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gr-roomcode {
+  display: block;
+  margin: 0 auto 8px;
+  border: 1px solid var(--gr-line-strong);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--gr-gold);
+  font-family: var(--font-mono);
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  padding: 18px 24px 18px 34px;
+  border-radius: 16px;
+  cursor: pointer;
+  text-shadow: 0 0 30px rgba(230, 184, 76, 0.3);
+  transition: border-color 0.18s ease;
+}
+
+.gr-roomcode:hover {
+  border-color: var(--gr-gold);
+}
+
+.gr-lobby-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 440px;
+  margin: 20px auto 24px;
+}
+
+.gr-lobby-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--gr-line);
+  background: var(--gr-felt);
+  text-align: left;
+}
+
+.gr-lobby-row.you {
+  border-color: var(--gr-line-strong);
+}
+
+.gr-lobby-row.empty {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.gr-lobby-avatar {
+  font-size: 1.3rem;
+}
+
+.gr-lobby-name {
+  flex: 1;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gr-lobby-name.dim {
+  color: var(--gr-cream-faint);
+  font-weight: 400;
+}
+
+.gr-lobby-host {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--gr-gold);
+  border: 1px solid var(--gr-gold);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.gr-card-you {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--gr-crimson);
+  border: 1px solid var(--gr-crimson);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.gr-lobby-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.gr-lobby-dot.on {
+  background: var(--gr-gold);
+  box-shadow: 0 0 8px var(--gr-gold);
+}
+
+.gr-lobby-dot.off {
+  background: var(--gr-cream-faint);
+}
+
+.gr-wait {
+  padding: 18px;
+  color: var(--gr-cream-dim);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.gr-lobby .gr-cta,
+.gr-lobby .gr-ghost {
+  max-width: 440px;
+  margin: 0 auto 12px;
+}
+
+/* ---------- 倒计时 ---------- */
+.gr-count {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: filter 0.3s ease, transform 0.3s ease;
+  position: relative;
+}
+
+.gr-count.danger {
+  filter: drop-shadow(0 0 14px rgba(255, 70, 85, 0.65));
+  animation: grCountPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes grCountPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.gr-count-inner {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--gr-felt);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.7rem;
+  color: var(--gr-cream);
+  transition: color 0.3s ease;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.45);
+}
+
+.gr-count.danger .gr-count-inner {
+  color: var(--gr-crimson);
+}
+
+/* ---------- 对局页 ---------- */
+.gr-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.gr-chip {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  color: var(--gr-gold);
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 999px;
+  padding: 6px 16px;
+  background: var(--gr-gold-soft);
+  flex-shrink: 0;
+}
+
+.gr-phase-tag {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  color: var(--gr-cream-dim);
+  border: 1px solid var(--gr-line);
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+}
+
+/* 阶段切换横幅 */
+.gr-phase-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 44px;
+  border-radius: 20px;
+  background: rgba(13, 27, 21, 0.92);
+  border: 1px solid var(--gr-gold);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), 0 0 60px rgba(230, 184, 76, 0.3);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  animation: grPhaseToast 2.2s ease forwards;
+}
+
+@keyframes grPhaseToast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+.gr-phase-toast-icon {
+  font-size: 2.4rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 18px rgba(230, 184, 76, 0.5));
+}
+
+.gr-phase-toast-text {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--gr-gold);
+  text-shadow: 0 0 18px rgba(230, 184, 76, 0.35);
+}
+
+.gr-ticker {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--gr-cream-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gr-ticker::before {
+  content: "💡";
+  margin-right: 6px;
+  filter: grayscale(0.2);
+}
+
+.gr-handcard {
+  text-align: center;
+  padding: 24px 20px;
+  margin-bottom: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--gr-line-strong);
+  background:
+    radial-gradient(120% 140% at 50% -20%, rgba(230, 184, 76, 0.12), transparent 55%),
+    var(--gr-felt);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gr-handcard-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gr-cream-faint);
+  margin-bottom: 8px;
+}
+
+.gr-handcard-word {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: clamp(1.9rem, 7vw, 2.6rem);
+  letter-spacing: 0.06em;
+  color: var(--gr-gold);
+  margin-bottom: 4px;
+  text-shadow: 0 0 30px rgba(230, 184, 76, 0.28);
+}
+
+.gr-handcard-role {
+  color: var(--gr-cream-dim);
+  font-size: 0.9rem;
+}
+
+.gr-say {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+
+.gr-say-input {
+  flex: 1;
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--gr-cream);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  padding: 14px 16px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gr-say-input:focus {
+  border-color: var(--gr-gold);
+  box-shadow: 0 0 0 3px rgba(230, 184, 76, 0.15);
+}
+
+.gr-say-input::placeholder {
+  color: var(--gr-cream-faint);
+}
+
+.gr-submit {
+  border: 1px solid var(--gr-gold);
+  border-radius: 12px;
+  padding: 0 26px;
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  color: #1a1203;
+  background: linear-gradient(180deg, #f4cf74, #dca73c);
+  transition: filter 0.16s ease, transform 0.08s ease;
+}
+
+.gr-submit:hover {
+  filter: brightness(1.06);
+}
+
+.gr-submit:active {
+  transform: translateY(1px);
+}
+
+.gr-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.gr-vote-hint {
+  text-align: center;
+  color: var(--gr-gold);
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  letter-spacing: 0.06em;
+  margin: 4px 0 14px;
+  animation: grPulse 1.8s ease-in-out infinite;
+}
+
+/* ---------- 玩家牌 ---------- */
+.gr-hand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.gr-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+  border: 1px solid var(--gr-line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-family: var(--font-sans);
+  color: var(--gr-cream);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.02), transparent),
+    var(--gr-felt);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+  cursor: default;
+  transition: border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+  animation: grDeal 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes grDeal {
+  from {
+    opacity: 0;
+    transform: translateY(14px) rotateX(30deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+  }
+}
+
+.gr-card.clickable {
+  cursor: pointer;
+}
+
+.gr-card.clickable:hover {
+  border-color: var(--gr-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.5), 0 0 18px rgba(230, 184, 76, 0.14);
+}
+
+.gr-card.voted {
+  border-color: var(--gr-gold);
+  box-shadow: 0 0 0 1px rgba(230, 184, 76, 0.4), 0 0 20px rgba(230, 184, 76, 0.2);
+}
+
+.gr-card.dead {
+  opacity: 0.42;
+  filter: grayscale(0.7);
+}
+
+.gr-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 108px;
+}
+
+.gr-card-avatar {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.gr-card-name {
+  font-weight: 600;
+  font-size: 0.98rem;
+  white-space: nowrap;
+}
+
+.gr-card-off {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  color: var(--gr-cream-faint);
+  margin-left: 6px;
+}
+
+.gr-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.gr-card-say {
+  font-size: 0.96rem;
+  color: var(--gr-cream);
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+
+.gr-card-wait {
+  font-family: var(--font-mono);
+  color: var(--gr-cream-faint);
+  padding: 9px 12px;
+}
+
+.gr-card-out {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--gr-crimson);
+  letter-spacing: 0.08em;
+  padding: 9px 0;
+}
+
+.gr-card-vote {
+  margin-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--gr-gold-dim);
+}
+
+/* ---------- 淘汰结果 ---------- */
+.gr-elim {
+  margin-bottom: 18px;
+  padding: 20px 22px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 70, 85, 0.3);
+  background: var(--gr-crimson-soft);
+  animation: grRise 0.4s ease both;
+}
+
+.gr-elim-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gr-crimson);
+  margin-bottom: 6px;
+}
+
+.gr-elim-text {
+  font-size: 1.06rem;
+  font-weight: 600;
+  color: var(--gr-cream);
+}
+
+.gr-verdict {
+  margin-top: 10px;
+  color: var(--gr-cream-dim);
+  font-size: 0.94rem;
+}
+
+.gr-verdict.center {
+  text-align: center;
+  color: var(--gr-gold);
+  margin: 16px 0;
+}
+
+.gr-foot {
+  text-align: center;
+  color: var(--gr-cream-faint);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  margin-top: 36px;
+}
+
+/* ---------- 投票状态 + 进度条 ---------- */
+.gr-vote-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--gr-line);
+  background: rgba(0, 0, 0, 0.28);
+  animation: grRise 0.35s ease both;
+}
+
+.gr-vote-status-text {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--gr-cream);
+  flex-shrink: 0;
+}
+
+.gr-vote-progress {
+  position: relative;
+  flex: 1;
+  max-width: 180px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--gr-line);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gr-vote-progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--gr-gold-dim), var(--gr-gold));
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 12px rgba(230, 184, 76, 0.4);
+}
+
+.gr-vote-progress-text {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--gr-cream);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* ---------- 投票确认弹层 ---------- */
+.gr-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  padding: 20px;
+  background: rgba(6, 4, 3, 0.82);
+  backdrop-filter: blur(8px);
+  overflow-y: auto;
+  animation: grRise 0.25s ease both;
+}
+
+.gr-confirm-card {
+  margin: auto;
+  width: 100%;
+  max-width: 340px;
+  background: linear-gradient(180deg, var(--gr-felt-2), var(--gr-felt));
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 20px;
+  padding: 28px 24px 22px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), 0 0 50px rgba(255, 70, 85, 0.15);
+  text-align: center;
+}
+
+.gr-confirm-icon {
+  font-size: 2.4rem;
+  line-height: 1;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 16px rgba(255, 70, 85, 0.4));
+  animation: grAvatarBreath 1.8s ease-in-out infinite;
+}
+
+.gr-confirm-title {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gr-cream);
+  margin-bottom: 18px;
+}
+
+.gr-confirm-target-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: rgba(230, 184, 76, 0.08);
+  border: 1px dashed var(--gr-line-strong);
+}
+
+.gr-confirm-target-avatar {
+  font-size: 2.2rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 12px rgba(230, 184, 76, 0.3));
+}
+
+.gr-confirm-target-name {
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+  letter-spacing: 0.04em;
+}
+
+.gr-confirm-hint {
+  margin-bottom: 18px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--gr-cream-faint);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- 揭晓 ---------- */
+.gr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  padding: 20px;
+  background: rgba(6, 4, 3, 0.86);
+  backdrop-filter: blur(8px);
+  overflow-y: auto;
+}
+
+.gr-modal {
+  margin: auto;
+  width: 100%;
+  max-width: 540px;
+  background: var(--gr-felt);
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 20px;
+  padding: 24px 20px;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.7), 0 0 60px rgba(230, 184, 76, 0.08);
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gr-banner {
+  text-align: center;
+  margin-bottom: 10px;
+  padding: 10px 0 14px;
+}
+
+.gr-banner-emoji {
+  font-size: 3.4rem;
+  line-height: 1;
+  margin-bottom: 6px;
+  animation: grBannerPop 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes grBannerPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) translateY(-10px);
+  }
+  60% {
+    transform: scale(1.15) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.gr-banner-big {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: clamp(2.6rem, 9vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.06em;
+}
+
+.gr-banner.win .gr-banner-big {
+  color: var(--gr-gold);
+  text-shadow: 0 0 50px rgba(230, 184, 76, 0.5);
+}
+
+.gr-banner.lose .gr-banner-big {
+  color: var(--gr-crimson);
+  text-shadow: 0 0 50px rgba(255, 70, 85, 0.5);
+}
+
+.gr-banner-sub {
+  color: var(--gr-cream-dim);
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  letter-spacing: 0.08em;
+}
+
+.gr-wordpair {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.gr-wordbox {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 14px;
+  padding: 16px 12px;
+  text-align: center;
+}
+
+.gr-wordbox.spy-box {
+  border-color: rgba(255, 70, 85, 0.4);
+  background: linear-gradient(180deg, rgba(255, 70, 85, 0.08), rgba(0, 0, 0, 0.2));
+}
+
+.gr-wordbox-k {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--gr-cream-faint);
+}
+
+.gr-wordbox-v {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+  text-shadow: 0 0 18px rgba(230, 184, 76, 0.3);
+  letter-spacing: 0.04em;
+}
+
+.gr-wordbox-v.spy {
+  color: var(--gr-crimson);
+  text-shadow: 0 0 18px rgba(255, 70, 85, 0.35);
+}
+
+.gr-reveal-title {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gr-gold);
+  margin: 18px 0 10px;
+  text-align: center;
+}
+
+.gr-reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 18px;
+}
+
+.gr-reveal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--gr-line);
+  animation: grFlipIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+@keyframes grFlipIn {
+  from {
+    opacity: 0;
+    transform: rotateY(90deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(0);
+  }
+}
+
+.gr-reveal-row.me {
+  border-color: var(--gr-gold);
+  background: rgba(230, 184, 76, 0.08);
+}
+
+.gr-reveal-row.spy {
+  background: var(--gr-crimson-soft);
+  border-color: rgba(255, 70, 85, 0.4);
+  box-shadow: 0 0 18px rgba(255, 70, 85, 0.15);
+}
+
+.gr-reveal-avatar {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.gr-reveal-name {
+  flex-shrink: 0;
+  font-weight: 600;
+  font-size: 0.92rem;
+  min-width: 70px;
+}
+
+.gr-reveal-row.me .gr-reveal-name {
+  color: var(--gr-gold);
+}
+
+.gr-reveal-word {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--gr-cream);
+}
+
+.gr-reveal-role {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--gr-cream-dim);
+  letter-spacing: 0.04em;
+}
+
+.gr-reveal-row.spy .gr-reveal-role {
+  color: var(--gr-crimson);
+}
+
+.gr-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.gr-actions .gr-cta,
+.gr-actions .gr-ghost,
+.gr-actions .gr-share-btn {
+  flex: 1;
+}
+
+/* 房主有"再来一局"时，主按钮占更多空间 */
+.gr-actions .gr-cta {
+  flex: 1.4;
+}
+
+/* 个人表现总结条 */
+.gr-my-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin: 6px 0 10px;
+  border-radius: var(--gr-r-md);
+  border: 1px solid var(--gr-line);
+  background: rgba(0, 0, 0, 0.25);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--gr-cream-dim);
+  letter-spacing: 0.04em;
+}
+
+.gr-my-summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gr-my-summary-item .v {
+  color: var(--gr-gold);
+  font-weight: 700;
+}
+
+.gr-my-summary-item.spy .v {
+  color: var(--gr-crimson);
+}
+
+/* ---------- 无障碍 ---------- */
+.game-root :focus-visible {
+  outline: 2px solid var(--gr-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-root *,
+  .game-root *::before,
+  .game-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 640px) {
+  .gr-container {
+    padding: 38px 16px 70px;
+  }
+
+  .gr-top {
+    flex-wrap: wrap;
+  }
+
+  .gr-say {
+    flex-direction: column;
+  }
+
+  .gr-submit {
+    padding: 14px;
+  }
+
+  .gr-wordpair {
+    flex-direction: column;
+  }
+
+  .gr-card-top {
+    width: 92px;
+  }
+}
+
+/* ---------- 钱包 ---------- */
+.gr-wallet {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.gr-wallet-on {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.gr-wallet-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gr-gold);
+  box-shadow: 0 0 8px var(--gr-gold);
+}
+
+.gr-wallet-addr {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--gr-cream);
+}
+
+.gr-wallet-btn {
+  border: none;
+  background: transparent;
+  color: var(--gr-cream-faint);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.gr-wallet-btn:hover {
+  color: var(--gr-crimson);
+}
+
+.gr-wallet-connect {
+  border: 1px solid var(--gr-gold);
+  border-radius: 999px;
+  padding: 10px 28px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--gr-gold);
+  background: var(--gr-gold-soft);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.gr-wallet-connect:hover {
+  box-shadow: 0 0 18px rgba(230, 184, 76, 0.22);
+}
+
+.gr-wallet-connect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- 房号复制 / 分享 ---------- */
+.gr-copy-hint {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--gr-cream-faint);
+  margin: 0 0 10px;
+  min-height: 1.2em;
+}
+
+.gr-share-btn {
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 999px;
+  padding: 8px 20px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--gr-cream-dim);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.gr-share-btn:hover {
+  border-color: var(--gr-gold);
+  color: var(--gr-gold);
+}
+
+/* ---------- 链上身份卡（SBT） ---------- */
+.gr-identity-section {
+  margin-top: 18px;
+}
+
+.gr-identity-section-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gr-cream-faint);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.gr-identity-mint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 18px 20px;
+  border: 1px solid var(--gr-line-strong);
+  border-radius: var(--gr-r-lg);
+  background:
+    radial-gradient(120% 120% at 50% -20%, rgba(230, 184, 76, 0.1), transparent 60%),
+    linear-gradient(180deg, var(--gr-felt-2), var(--gr-felt));
+}
+
+.gr-identity-mint-text {
+  font-size: 0.9rem;
+  color: var(--gr-cream-dim);
+  text-align: center;
+}
+
+/* 荣誉解锁（结算页醒目的铸造入口） */
+.gr-honor-unlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 20px;
+  margin: 4px 0 18px;
+  border: 1px solid var(--gr-gold);
+  border-radius: var(--gr-r-xl);
+  background:
+    radial-gradient(140% 130% at 50% -30%, rgba(230, 184, 76, 0.22), transparent 62%),
+    linear-gradient(180deg, var(--gr-felt-2), var(--gr-felt));
+  box-shadow: 0 0 30px rgba(230, 184, 76, 0.12);
+  text-align: center;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gr-honor-unlock-emoji {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.gr-honor-unlock-title {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+  text-shadow: 0 0 20px rgba(230, 184, 76, 0.45);
+}
+
+.gr-honor-unlock-desc {
+  font-size: 0.88rem;
+  color: var(--gr-cream-dim);
+}
+
+.gr-honor-mint-btn {
+  margin-top: 6px;
+  border: none;
+  border-radius: var(--gr-r-pill);
+  background: linear-gradient(180deg, var(--gr-gold-bright), var(--gr-gold));
+  color: #1a1203;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  padding: 12px 28px;
+  cursor: pointer;
+  box-shadow: 0 0 24px rgba(230, 184, 76, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gr-honor-mint-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 34px rgba(230, 184, 76, 0.5);
+}
+
+.gr-honor-mint-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 荣誉墙：多枚荣誉勋章 2 列网格 */
+.gr-honor-wall {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 400px) {
+  .gr-honor-wall {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gr-identity-card {
+  position: relative;
+  text-align: center;
+  border: 1px solid var(--gr-line-strong);
+  border-radius: var(--gr-r-xl);
+  padding: 20px 18px 18px;
+  background:
+    radial-gradient(140% 120% at 50% -30%, rgba(230, 184, 76, 0.16), transparent 58%),
+    radial-gradient(120% 120% at 100% 110%, rgba(255, 70, 85, 0.05), transparent 55%),
+    linear-gradient(180deg, var(--gr-felt-2), var(--gr-felt));
+  box-shadow: var(--gr-sh-2), 0 0 34px rgba(230, 184, 76, 0.07);
+}
+
+.gr-identity-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gr-gold), transparent);
+  opacity: 0.8;
+}
+
+.gr-identity-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.gr-identity-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--gr-line-strong);
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+.gr-identity-id {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.gr-identity-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--gr-gold-dim);
+  margin-bottom: 8px;
+}
+
+.gr-identity-title {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+  text-shadow: 0 0 22px rgba(230, 184, 76, 0.5);
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+}
+
+.gr-identity-desc {
+  font-size: 0.84rem;
+  color: var(--gr-cream-dim);
+  margin-bottom: 14px;
+}
+
+.gr-identity-badge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--gr-gold);
+  border: 1px solid var(--gr-gold);
+  background: var(--gr-gold-soft);
+  border-radius: var(--gr-r-pill);
+  padding: 4px 10px;
+}
+
+.gr-identity-stats {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.gr-identity-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border: 1px solid var(--gr-line);
+  border-radius: var(--gr-r-md);
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.72rem;
+  color: var(--gr-cream-faint);
+  text-align: center;
+}
+
+.gr-identity-stat b {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  color: var(--gr-cream);
+}
+
+.gr-identity-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.gr-identity-link {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--gr-cream-dim);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.gr-identity-link:hover {
+  color: var(--gr-gold);
+}
+
+/* ---------- 圆桌 ---------- */
+.gr-table {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1;
+  margin: 4px auto 14px;
+}
+
+.gr-table::before {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  border: 1px solid var(--gr-line);
+  background: radial-gradient(circle, rgba(230, 184, 76, 0.05), transparent 70%);
+}
+
+.gr-table-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 2;
+  width: 200px;
+  max-width: 60%;
+  text-align: center;
+}
+
+.gr-speaker-hint {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--gr-gold);
+  background: var(--gr-gold-soft);
+  border: 1px solid var(--gr-line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  animation: grPulse 1.6s ease-in-out infinite;
+}
+
+.gr-speaker-hint.mine {
+  color: #1a1203;
+  background: linear-gradient(180deg, #f4cf74, #dca73c);
+  border-color: var(--gr-gold);
+  font-weight: 700;
+  box-shadow: 0 0 18px rgba(230, 184, 76, 0.45);
+}
+
+.gr-seat {
+  position: absolute;
+  width: 122px;
+  z-index: 1;
+  animation: grSeatIn 0.5s ease both;
+}
+
+@keyframes grSeatIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.gr-seat .gr-card {
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 3px;
+  padding: 10px 8px;
+  animation: none;
+}
+
+.gr-seat .gr-card-avatar {
+  font-size: 1.3rem;
+}
+
+.gr-seat .gr-card-name {
+  font-size: 0.82rem;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.gr-seat .gr-card-say {
+  font-size: 0.82rem;
+  padding: 7px 9px;
+  margin-top: 2px;
+  max-height: 56px;
+  overflow: hidden;
+}
+
+.gr-seat .gr-card-wait {
+  padding: 7px 0;
+}
+
+.gr-seat.speaker .gr-head {
+  position: relative;
+}
+
+.gr-seat.speaker .gr-head::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(230, 184, 76, 0.32), transparent 68%);
+  z-index: -1;
+  animation: grSpotlight 1.8s ease-in-out infinite;
+}
+
+@keyframes grSpotlight {
+  0%, 100% { opacity: 0.7; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.18); }
+}
+
+.gr-seat.speaker::after {
+  content: "发言中";
+  position: absolute;
+  top: -16px;
+  left: 62%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  color: #1a1203;
+  background: linear-gradient(180deg, #f4cf74, #dca73c);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  box-shadow: 0 0 12px rgba(230, 184, 76, 0.45);
+  animation: grRise 0.3s ease both;
+  z-index: 3;
+}
+
+.gr-seat.voted .gr-card {
+  border-color: var(--gr-gold);
+}
+
+.gr-seat.dead {
+  opacity: 0.42;
+  filter: grayscale(0.7);
+}
+
+/* 人类"你"玩家：金色环 + 标识 */
+.gr-seat.me .gr-card-avatar {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  padding: 4px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(230, 184, 76, 0.32), rgba(230, 184, 76, 0.08));
+  border: 1.5px solid var(--gr-gold);
+  box-shadow: 0 0 14px rgba(230, 184, 76, 0.35);
+}
+
+.gr-seat.me .gr-card-name {
+  color: var(--gr-gold);
+  font-weight: 700;
+}
+
+.gr-me-tag {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #1a1203;
+  background: linear-gradient(180deg, #f4cf74, #dca73c);
+  border-radius: 999px;
+  padding: 1px 6px;
+  line-height: 1.4;
+  box-shadow: 0 0 8px rgba(230, 184, 76, 0.5);
+}
+
+.gr-actions .gr-share-btn {
+  flex: 1;
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  .gr-seat {
+    width: 94px;
+  }
+
+  .gr-seat .gr-card {
+    padding: 7px 5px;
+  }
+
+  .gr-seat .gr-card-say {
+    font-size: 0.72rem;
+    padding: 5px 7px;
+    max-height: 44px;
+  }
+
+  .gr-seat .gr-card-name {
+    font-size: 0.7rem;
+  }
+}
+
+/* ---------- 观战 / 发言记录 ---------- */
+.gr-spectator {
+  text-align: center;
+  color: var(--gr-crimson);
+  background: var(--gr-crimson-soft);
+  border: 1px solid rgba(255, 70, 85, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  margin-bottom: 14px;
+  animation: grRise 0.4s ease both;
+}
+
+.gr-speech {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 18px;
+}
+
+.gr-speech-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gr-gold);
+  margin-bottom: 2px;
+}
+
+.gr-speech-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--gr-line);
+  border-radius: 10px;
+  padding: 10px 13px;
+  animation: grRise 0.35s ease both;
+}
+
+.gr-speech-name {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--gr-gold-dim);
+  padding-top: 1px;
+}
+
+.gr-speech-text {
+  font-size: 0.96rem;
+  color: var(--gr-cream);
+  word-break: break-word;
+}
+
+/* 卡片状态（替代发言文字，发言移入 .gr-speech） */
+.gr-seat .gr-card-status {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--gr-gold-dim);
+  padding: 3px 0;
+}
+
+.gr-seat .gr-card-status.out {
+  color: var(--gr-crimson);
+}
+
+/* 首页钱包顶栏 */
+.gr-home-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.gr-elim {
+  margin-top: 6px;
+}
+
+/* ---------- 发言气泡 / 圆桌中心 ---------- */
+.gr-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.gr-bubble {
+  position: relative;
+  background: rgba(230, 184, 76, 0.12);
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 12px;
+  padding: 7px 10px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--gr-cream);
+  word-break: break-word;
+  text-align: left;
+  margin-top: 6px;
+  max-width: 150px;
+}
+
+.gr-bubble::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: rgba(230, 184, 76, 0.3);
+}
+
+.gr-myword {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--gr-gold);
+  background: linear-gradient(180deg, rgba(230, 184, 76, 0.18), rgba(230, 184, 76, 0.08));
+  border: 1px solid var(--gr-gold);
+  border-radius: 999px;
+  padding: 6px 16px;
+  white-space: nowrap;
+  text-shadow: 0 0 14px rgba(230, 184, 76, 0.35);
+  box-shadow: 0 0 22px rgba(230, 184, 76, 0.18), inset 0 0 12px rgba(230, 184, 76, 0.06);
+}
+
+.gr-vote-cta {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gr-crimson);
+  text-shadow: 0 0 22px rgba(255, 70, 85, 0.45);
+  animation: grPulse 1.1s ease-in-out infinite;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+}
+
+.gr-table-center {
+  width: 200px;
+  max-width: 60%;
+}
+
+/* ---------- 大厅优化 ---------- */
+.gr-lobby-tools {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.gr-lobby-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.gr-lobby-count {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--gr-cream-dim);
+}
+
+.gr-roomcode {
+  font-size: 2.2rem;
+  padding: 16px 20px 16px 28px;
+}
+
+/* ---------- 圆桌头像 + 浮动气泡 + 指引线 ---------- */
+.gr-seat {
+  width: auto;
+}
+
+.gr-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  cursor: default;
+  padding: 0;
+  position: relative;
+}
+
+.gr-head .gr-card-avatar {
+  font-size: 1.7rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.gr-head .gr-card-name {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--gr-cream-dim);
+  white-space: nowrap;
+}
+
+.gr-head.clickable {
+  cursor: pointer;
+}
+
+.gr-head.clickable:hover .gr-card-avatar {
+  transform: scale(1.18);
+}
+
+.gr-seat.speaker .gr-card-avatar {
+  filter: drop-shadow(0 0 10px var(--gr-gold));
+  animation: grAvatarBreath 1.6s ease-in-out infinite;
+}
+
+@keyframes grAvatarBreath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.gr-seat.speaker .gr-card-name {
+  color: var(--gr-gold);
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(230, 184, 76, 0.4);
+}
+
+.gr-seat.voted .gr-card-avatar {
+  filter: drop-shadow(0 0 8px var(--gr-crimson));
+}
+
+.gr-seat.dead {
+  opacity: 0.4;
+  filter: grayscale(0.7);
+}
+
+.gr-thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  color: var(--gr-cream-faint);
+  line-height: 1;
+  margin-top: 3px;
+}
+
+.gr-thinking-label {
+  opacity: 0.85;
+}
+
+.gr-thinking-dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.gr-dot-anim {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--gr-gold);
+  animation: grDotBounce 1.2s ease-in-out infinite;
+}
+
+.gr-dot-anim:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.gr-dot-anim:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes grDotBounce {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+.gr-out-tag {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--gr-crimson);
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.gr-vote-tag {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.gr-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.gr-lines line {
+  stroke: var(--gr-gold-dim);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.55;
+}
+
+.gr-bubble {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: rgba(230, 184, 76, 0.14);
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 14px;
+  padding: 8px 11px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--gr-cream);
+  word-break: break-word;
+  max-width: 130px;
+  z-index: 1;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 14px rgba(230, 184, 76, 0.12);
+  animation: grBubbleIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes grBubbleIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.gr-bubble::before {
+  display: none;
+}
+
+/* ---------- 大厅：紧凑分享 ---------- */
+.gr-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.gr-share-ico {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--gr-cream-dim);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.gr-share-ico:hover {
+  border-color: var(--gr-gold);
+  color: var(--gr-gold);
+}
+
+.gr-copied {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--gr-gold);
+  text-align: center;
+  margin: 0 0 12px;
+  min-height: 1.1em;
+}
+
+@media (max-width: 640px) {
+  .gr-head .gr-card-avatar {
+    font-size: 1.4rem;
+  }
+}
+
+/* ---------- 左右布局：圆桌 + 发言记录 ---------- */
+.gr-play-area {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin: 4px 0 14px;
+}
+
+.gr-play-area .gr-table {
+  flex: 0 0 520px;
+  max-width: 48vw;
+  margin: 0;
+}
+
+.gr-play-area .gr-speech-list {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  align-self: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.gr-play-area .gr-speech-rows {
+  flex: 1;
+  max-height: none;
+}
+
+/* 窄屏：上下堆叠 */
+@media (max-width: 880px) {
+  .gr-play-area {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gr-play-area .gr-table {
+    flex: none;
+    max-width: 100%;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .gr-play-area .gr-speech-list {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .gr-play-area .gr-speech-rows {
+    max-height: 280px;
+  }
+}
+
+/* ---------- 发言记录列表 ---------- */
+.gr-speech-list {
+  margin: 10px auto 14px;
+  padding: 0;
+}
+
+.gr-speech-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gr-gold);
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.gr-speech-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.gr-speech-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--gr-line);
+  border-left: 3px solid transparent;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  animation: grRise 0.3s ease both;
+}
+
+.gr-speech-row.speaking {
+  border-left-color: var(--gr-gold);
+  background: rgba(230, 184, 76, 0.1);
+  box-shadow: 0 0 14px rgba(230, 184, 76, 0.12);
+}
+
+.gr-speech-row.me {
+  border-color: var(--gr-line-strong);
+}
+
+.gr-speech-row.dead {
+  opacity: 0.5;
+  filter: grayscale(0.5);
+}
+
+.gr-speech-avatar {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.gr-speech-name {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--gr-gold-dim);
+  flex-shrink: 0;
+  width: 64px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gr-speech-row.me .gr-speech-name {
+  color: var(--gr-gold);
+  font-weight: 700;
+}
+
+.gr-speech-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.88rem;
+  color: var(--gr-cream);
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.gr-speech-row.speaking .gr-speech-text {
+  color: var(--gr-gold);
+  font-weight: 500;
+}
+
+.gr-speech-row.dead .gr-speech-text {
+  color: var(--gr-cream-faint);
+  font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .gr-speech-name {
+    width: 48px;
+    font-size: 0.68rem;
+  }
+
+  .gr-speech-text {
+    font-size: 0.82rem;
+  }
+}
+
+/* ---------- 修复确认弹层按钮布局 ---------- */
+.gr-confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.gr-confirm-actions .gr-cta,
+.gr-confirm-actions .gr-ghost {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  padding: 14px 16px;
+  font-size: 0.95rem;
+}
+
+.gr-confirm-actions .gr-cta {
+  letter-spacing: 0.04em;
+}
+
+/* =====================================================================
+   全站重构 · v2（首页 + 大厅 + 通用升级）
+   设计原则：保留黑金赌场基调，统一设计系统，强化品牌沉浸与桌位隐喻
+   ===================================================================== */
+
+/* ---------- 品牌印记 ---------- */
+.gr-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gr-cream-dim);
+}
+
+.gr-brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--gr-gold-bright), var(--gr-gold-dim));
+  color: #1a1203;
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: 0 0 14px rgba(230, 184, 76, 0.4), inset 0 0 8px rgba(255, 255, 255, 0.2);
+}
+
+/* ---------- 首页 v2：双栏 hero ---------- */
+.gr-home-v2 {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 48px;
+  align-items: start;
+  padding-top: 8px;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (max-width: 880px) {
+  .gr-home-v2 {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
+/* 左栏：hero storytelling */
+.gr-home-hero {
+  position: relative;
+  padding-top: 12px;
+}
+
+.gr-home-hero .gr-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono);
+  font-size: var(--gr-fz-eyebrow);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gr-gold);
+  border: 1px solid var(--gr-line);
+  border-radius: var(--gr-r-pill);
+  padding: 7px 16px;
+  margin-bottom: 24px;
+  background: rgba(230, 184, 76, 0.05);
+}
+
+.gr-home-hero h1 {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: clamp(2.8rem, 9vw, 4.4rem);
+  font-weight: 400;
+  line-height: 1.02;
+  margin: 0 0 18px;
+  letter-spacing: 0.02em;
+  color: var(--gr-cream);
+  text-shadow: 0 0 40px rgba(230, 184, 76, 0.25);
+}
+
+.gr-home-hero h1 .accent {
+  color: var(--gr-crimson);
+  text-shadow: 0 0 34px rgba(255, 70, 85, 0.4);
+}
+
+.gr-home-hero .gr-lede {
+  color: var(--gr-cream-dim);
+  font-size: 1.04rem;
+  margin: 0 0 32px;
+  max-width: 460px;
+}
+
+/* 卖点列表 */
+.gr-features {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 36px;
+}
+
+.gr-feature {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: var(--gr-r-lg);
+  border: 1px solid var(--gr-line);
+  background: linear-gradient(180deg, rgba(13, 27, 21, 0.5), rgba(13, 27, 21, 0.2));
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.gr-feature:hover {
+  border-color: var(--gr-line-strong);
+  transform: translateX(2px);
+}
+
+.gr-feature-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--gr-gold-soft);
+  border: 1px solid var(--gr-line-strong);
+  font-size: 1.15rem;
+}
+
+.gr-feature-body h3 {
+  margin: 0 0 3px;
+  font-family: var(--font-sans);
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--gr-cream);
+}
+
+.gr-feature-body p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--gr-cream-dim);
+  line-height: 1.5;
+}
+
+.gr-home-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--gr-cream-faint);
+  letter-spacing: 0.08em;
+}
+
+/* 右栏：操作面板 */
+.gr-home-panel {
+  position: sticky;
+  top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 钱包卡 v2 */
+.gr-wallet-v2 {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--gr-r-lg);
+  border: 1px solid var(--gr-line);
+  background: linear-gradient(180deg, rgba(13, 27, 21, 0.65), rgba(13, 27, 21, 0.35));
+  box-shadow: var(--gr-sh-1);
+}
+
+.gr-wallet-v2.connected {
+  border-color: var(--gr-line-strong);
+}
+
+.gr-wallet-v2-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(230, 184, 76, 0.08);
+  border: 1px solid var(--gr-line);
+  font-size: 1.2rem;
+}
+
+.gr-wallet-v2.connected .gr-wallet-v2-icon {
+  background: linear-gradient(135deg, rgba(230, 184, 76, 0.2), rgba(230, 184, 76, 0.05));
+  border-color: var(--gr-gold);
+}
+
+.gr-wallet-v2-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.gr-wallet-v2-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gr-cream-faint);
+  margin-bottom: 2px;
+}
+
+.gr-wallet-v2-addr {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--gr-cream);
+  font-weight: 600;
+}
+
+.gr-wallet-v2-disconnect {
+  border: 1px solid var(--gr-line);
+  background: transparent;
+  color: var(--gr-cream-faint);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 6px 12px;
+  border-radius: var(--gr-r-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gr-wallet-v2-disconnect:hover {
+  border-color: var(--gr-crimson);
+  color: var(--gr-crimson);
+}
+
+.gr-wallet-v2-connect {
+  width: 100%;
+  border: 1px solid var(--gr-gold);
+  border-radius: var(--gr-r-md);
+  padding: 14px 20px;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 0.96rem;
+  letter-spacing: 0.04em;
+  color: var(--gr-gold);
+  background: linear-gradient(180deg, rgba(230, 184, 76, 0.12), rgba(230, 184, 76, 0.04));
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.gr-wallet-v2-connect:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(230, 184, 76, 0.2), rgba(230, 184, 76, 0.08));
+  box-shadow: 0 0 22px rgba(230, 184, 76, 0.25);
+}
+
+.gr-wallet-v2-connect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 操作卡（创建/加入）v2 */
+.gr-action-card {
+  background: linear-gradient(180deg, var(--gr-felt-2), var(--gr-felt));
+  border: 1px solid var(--gr-line-strong);
+  border-radius: var(--gr-r-xl);
+  padding: 22px;
+  box-shadow: var(--gr-sh-2);
+}
+
+.gr-action-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--gr-line);
+  border-radius: var(--gr-r-pill);
+  background: rgba(0, 0, 0, 0.3);
+  margin-bottom: 20px;
+}
+
+.gr-action-tabs button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--gr-cream-dim);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 9px 18px;
+  border-radius: var(--gr-r-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gr-action-tabs button.on {
+  color: #1a1203;
+  background: linear-gradient(180deg, var(--gr-gold-bright), var(--gr-gold));
+}
+
+.gr-action-card .gr-label {
+  margin-top: 14px;
+}
+
+.gr-action-card .gr-cta {
+  margin-top: 18px;
+}
+
+/* 公开房间列表（加入房间页） */
+.gr-open-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+.gr-open-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gr-cream-faint);
+}
+
+.gr-open-refresh {
+  font-size: 0.78rem;
+  color: var(--gr-gold-dim);
+  font-family: var(--font-mono);
+}
+
+.gr-open-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.gr-open-empty {
+  padding: 18px 0;
+  text-align: center;
+  font-size: 0.86rem;
+  color: var(--gr-cream-faint);
+}
+
+.gr-open-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--gr-line);
+  border-radius: var(--gr-r-md);
+  background: rgba(0, 0, 0, 0.28);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.gr-open-row:hover {
+  border-color: var(--gr-line-strong);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.gr-open-code {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--gr-gold);
+  min-width: 88px;
+}
+
+.gr-open-meta {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--gr-cream-dim);
+}
+
+.gr-open-count {
+  color: var(--gr-cream);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.gr-open-ai {
+  color: var(--gr-cream-faint);
+}
+
+.gr-open-join {
+  flex-shrink: 0;
+  border: 1px solid var(--gr-gold);
+  background: var(--gr-gold-soft);
+  color: var(--gr-gold);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 7px 16px;
+  border-radius: var(--gr-r-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gr-open-join:hover:not(:disabled) {
+  background: var(--gr-gold);
+  color: #1a1203;
+}
+
+.gr-open-join:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 移动端：右栏面板取消 sticky */
+@media (max-width: 880px) {
+  .gr-home-panel {
+    position: static;
+  }
+}
+
+/* ---------- 大厅 v2 ---------- */
+.gr-lobby-v2 {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 32px;
+  align-items: start;
+  padding-top: 8px;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (max-width: 880px) {
+  .gr-lobby-v2 {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* 左：房间卡 + 座位网格 */
+.gr-lobby-main {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.gr-room-card {
+  position: relative;
+  padding: 24px;
+  border-radius: var(--gr-r-xl);
+  border: 1px solid var(--gr-line-strong);
+  background:
+    radial-gradient(120% 140% at 50% -20%, rgba(230, 184, 76, 0.12), transparent 55%),
+    linear-gradient(180deg, var(--gr-felt-2), var(--gr-felt));
+  box-shadow: var(--gr-sh-2);
+  text-align: center;
+}
+
+.gr-room-card-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--gr-fz-eyebrow);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gr-gold);
+  margin-bottom: 12px;
+}
+
+.gr-room-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.gr-room-code {
+  font-family: var(--font-mono);
+  font-size: clamp(2rem, 7vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  padding: 4px 8px;
+  color: var(--gr-gold);
+  text-shadow: 0 0 30px rgba(230, 184, 76, 0.35);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.gr-room-code:hover {
+  opacity: 0.75;
+}
+
+.gr-room-tools {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.gr-room-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--gr-r-pill);
+  border: 1px solid var(--gr-line-strong);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--gr-cream-dim);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gr-room-tool:hover {
+  border-color: var(--gr-gold);
+  color: var(--gr-gold);
+}
+
+.gr-room-tool.copied {
+  border-color: var(--gr-gold);
+  color: var(--gr-gold);
+  background: var(--gr-gold-soft);
+}
+
+.gr-room-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--gr-cream-dim);
+}
+
+.gr-room-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--gr-r-pill);
+  border: 1px solid var(--gr-line);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--gr-gold);
+  font-weight: 700;
+}
+
+/* 座位网格 */
+.gr-seats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.gr-seat-v2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--gr-r-md);
+  border: 1px solid var(--gr-line);
+  background: var(--gr-felt);
+  text-align: left;
+  transition: all 0.2s ease;
+  animation: grRise 0.4s ease both;
+}
+
+.gr-seat-v2.you {
+  border-color: var(--gr-gold);
+  background: linear-gradient(180deg, rgba(230, 184, 76, 0.08), var(--gr-felt));
+  box-shadow: 0 0 14px rgba(230, 184, 76, 0.12);
+}
+
+.gr-seat-v2.empty {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.gr-seat-v2-avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(230, 184, 76, 0.08);
+  border: 1px solid var(--gr-line);
+  font-size: 1.15rem;
+}
+
+.gr-seat-v2.you .gr-seat-v2-avatar {
+  background: linear-gradient(135deg, rgba(230, 184, 76, 0.3), rgba(230, 184, 76, 0.08));
+  border-color: var(--gr-gold);
+  box-shadow: 0 0 10px rgba(230, 184, 76, 0.4);
+}
+
+.gr-seat-v2.empty .gr-seat-v2-avatar {
+  background: transparent;
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.gr-seat-v2-status {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--gr-felt);
+  background: var(--gr-gold);
+}
+
+.gr-seat-v2-status.off {
+  background: var(--gr-cream-faint);
+}
+
+.gr-seat-v2-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.gr-seat-v2-name {
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--gr-cream);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gr-seat-v2.you .gr-seat-v2-name {
+  color: var(--gr-gold);
+}
+
+.gr-seat-v2-sub {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--gr-cream-faint);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.gr-seat-v2-tag {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.gr-seat-v2-tag.host {
+  color: var(--gr-gold);
+  background: var(--gr-gold-soft);
+  border: 1px solid var(--gr-gold);
+}
+
+.gr-seat-v2-tag.you {
+  color: var(--gr-crimson);
+  background: var(--gr-crimson-soft);
+  border: 1px solid var(--gr-crimson);
+}
+
+/* 右：操作侧栏 */
+.gr-lobby-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 24px;
+}
+
+@media (max-width: 880px) {
+  .gr-lobby-side {
+    position: static;
+  }
+}
+
+.gr-lobby-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gr-lobby-waiting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--gr-r-md);
+  border: 1px solid var(--gr-line);
+  background: rgba(0, 0, 0, 0.25);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--gr-cream-dim);
+}
+
+.gr-lobby-waiting-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gr-gold);
+  box-shadow: 0 0 8px var(--gr-gold);
+  animation: grPulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* 玩法速览 */
+.gr-rules {
+  padding: 16px;
+  border-radius: var(--gr-r-md);
+  border: 1px solid var(--gr-line);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.gr-rules-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gr-gold);
+  margin-bottom: 10px;
+}
+
+.gr-rules-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gr-rules-list li {
+  display: flex;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--gr-cream-dim);
+  line-height: 1.5;
+}
+
+.gr-rules-list li::before {
+  content: counter(rule);
+  counter-increment: rule;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gr-gold-soft);
+  border: 1px solid var(--gr-line-strong);
+  color: var(--gr-gold);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.gr-rules-list {
+  counter-reset: rule;
+}
+
+/* 顶部品牌条（首页/大厅通用） */
+.gr-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.gr-top-bar-back {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--gr-cream-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: 0.06em;
+  transition: color 0.15s ease;
+}
+
+.gr-top-bar-back:hover {
+  color: var(--gr-gold);
+}
+
+/* ---------- identicon 头像（web3 身份） ---------- */
+.gr-identicon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.gr-confirm-target-avatar .gr-identicon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.gr-seat-v2-avatar .gr-identicon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+/* ---------- 词条横幅 + 链上徽章 ---------- */
+.gr-word-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 18px;
+  margin-bottom: 16px;
+  border-radius: var(--gr-r-md);
+  border: 1px solid var(--gr-line-strong);
+  background: linear-gradient(180deg, rgba(230, 184, 76, 0.1), rgba(13, 27, 21, 0.5));
+}
+
+.gr-word-banner-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  color: var(--gr-cream-faint);
+}
+
+.gr-word-banner-value {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+  text-shadow: 0 0 18px rgba(230, 184, 76, 0.3);
+}
+
+.gr-onchain-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--gr-cream-dim);
+  border: 1px solid var(--gr-line);
+  border-radius: var(--gr-r-pill);
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  cursor: help;
+}
+
+/* ---------- 揭晓：链上可验证 ---------- */
+.gr-onchain {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 2px;
+  padding: 12px 14px;
+  border-radius: var(--gr-r-md);
+  border: 1px solid var(--gr-line);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.gr-onchain .gr-onchain-badge {
+  color: var(--gr-gold);
+  border-color: var(--gr-gold);
+  background: var(--gr-gold-soft);
+}
+
+.gr-onchain-addr {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--gr-cream-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.gr-onchain-addr:hover {
+  color: var(--gr-gold);
+}
+
+.gr-onchain-link {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--gr-gold);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.gr-onchain-link:hover {
+  border-bottom-color: var(--gr-gold);
+}
+
+/* 窄屏：identicon 更小、词条横幅更紧凑 */
+@media (max-width: 640px) {
+  .gr-identicon {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+  }
+
+  .gr-word-banner-value {
+    font-size: 1.15rem;
+  }
+}
+
+/* ---------- 本地战绩 + 新手指引 ---------- */
+.gr-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px 14px;
+  margin: 6px 0 10px;
+  border-radius: var(--gr-r-md);
+  border: 1px solid var(--gr-line);
+  background: rgba(0, 0, 0, 0.25);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--gr-cream-dim);
+  letter-spacing: 0.04em;
+}
+
+.gr-stats-item b {
+  color: var(--gr-gold);
+  font-weight: 700;
+}
+
+.gr-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border-radius: var(--gr-r-md);
+  border: 1px solid rgba(230, 184, 76, 0.3);
+  background: var(--gr-gold-soft);
+  font-size: 0.88rem;
+  color: var(--gr-cream);
+  animation: grRise 0.4s ease both;
+}
+
+.gr-intro-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--gr-cream-faint);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+.gr-intro-dismiss:hover {
+  color: var(--gr-crimson);
+}
+
+/* ---------- 首页（单列 · 游戏化） ---------- */
+.gr-home {
+  max-width: 560px;
+  margin: 0 auto;
+  padding-top: 8px;
+  text-align: center;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gr-brand {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  color: var(--gr-gold);
+}
+
+.gr-wallet-pill {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--gr-cream-dim);
+  border: 1px solid var(--gr-line-strong);
+  border-radius: var(--gr-r-pill);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.gr-wallet-pill:hover {
+  border-color: var(--gr-gold);
+  color: var(--gr-gold);
+}
+
+.gr-wallet-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gr-profile-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gr-gold);
+  border: 1px solid var(--gr-gold);
+  border-radius: var(--gr-r-pill);
+  background: var(--gr-gold-soft);
+  padding: 4px 14px 4px 5px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.gr-profile-pill:hover {
+  background: var(--gr-gold);
+  color: #1a1203;
+}
+
+.gr-profile-identicon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  image-rendering: pixelated;
+  display: block;
+}
+
+.gr-sell {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 22px 0 14px;
+}
+
+.gr-sell-pill {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--gr-cream-dim);
+  border: 1px solid var(--gr-line);
+  border-radius: var(--gr-r-pill);
+  padding: 5px 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.gr-steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.gr-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--gr-cream-faint);
+}
+
+.gr-step-num {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--gr-line-strong);
+  background: var(--gr-gold-soft);
+  color: var(--gr-gold);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.gr-step-arrow {
+  color: var(--gr-gold-dim);
+}
+
+.gr-foot-note {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--gr-cream-faint);
+  letter-spacing: 0.06em;
+}
+
+/* ---------- 顶栏左侧（返回 + 品牌） ---------- */
+.gr-top-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gr-back {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--gr-cream-faint);
+  background: none;
+  border: 1px solid var(--gr-line);
+  border-radius: var(--gr-r-pill);
+  padding: 5px 12px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.gr-back:hover {
+  color: var(--gr-gold);
+  border-color: var(--gr-gold);
+}
+
+/* ---------- 游戏大厅（平台首页） ---------- */
+.gr-hall {
+  max-width: 720px;
+}
+
+.gr-hall-title {
+  margin-top: 4px;
+}
+
+.gr-hall-sub {
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  letter-spacing: 0.08em;
+  color: var(--gr-cream-dim);
+  margin: 10px 0 28px;
+}
+
+.gr-hall-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  text-align: left;
+}
+
+.gr-game-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 20px 20px 18px;
+  border-radius: var(--gr-r-xl);
+  border: 1px solid var(--gr-line-strong);
+  background:
+    radial-gradient(130% 120% at 0% 0%, rgba(230, 184, 76, 0.1), transparent 55%),
+    linear-gradient(180deg, var(--gr-felt-2), var(--gr-felt));
+  box-shadow: var(--gr-sh-2);
+  color: var(--gr-cream);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.gr-game-card.live:hover {
+  transform: translateY(-3px);
+  border-color: var(--gr-gold);
+  box-shadow: 0 0 30px rgba(230, 184, 76, 0.2), var(--gr-sh-2);
+}
+
+.gr-game-card.soon {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: saturate(0.6);
+}
+
+.gr-game-emoji {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.gr-game-title {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+  letter-spacing: 0.02em;
+}
+
+.gr-game-tagline {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: var(--gr-cream-dim);
+}
+
+.gr-game-desc {
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--gr-cream-faint);
+}
+
+.gr-game-badge {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--gr-cream-faint);
+  border: 1px solid var(--gr-line);
+  border-radius: var(--gr-r-pill);
+  padding: 4px 12px;
+}
+
+.gr-game-badge.live {
+  color: #1a1203;
+  background: linear-gradient(180deg, var(--gr-gold-bright), var(--gr-gold));
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.gr-hall-foot {
+  margin-top: 28px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--gr-cream-faint);
+  letter-spacing: 0.06em;
+}
+
+/* 个人中心：邀请裂变 + 链上身份（大厅显眼入口） */
+.gr-hall-me {
+  margin-top: 22px;
+}
+
+.gr-hall-me-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gr-cream-faint);
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.gr-hall-me-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  text-align: left;
+}
+
+.gr-hall-invite,
+.gr-hall-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px;
+  border-radius: var(--gr-r-xl);
+  border: 1px solid var(--gr-line-strong);
+  background:
+    radial-gradient(130% 120% at 0% 0%, rgba(230, 184, 76, 0.1), transparent 55%),
+    linear-gradient(180deg, var(--gr-felt-2), var(--gr-felt));
+  box-shadow: var(--gr-sh-2);
+}
+
+.gr-hall-invite-emoji,
+.gr-hall-identity-emoji {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.gr-hall-invite-title,
+.gr-hall-identity-title {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+}
+
+.gr-hall-invite-desc,
+.gr-hall-identity-desc {
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--gr-cream-dim);
+}
+
+.gr-hall-invite-desc b {
+  color: var(--gr-gold);
+  font-family: var(--font-mono);
+}
+
+.gr-hall-identity .gr-identity-card {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .gr-hall-grid {
+    grid-template-columns: 1fr;
+  }
+  .gr-hall-me-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- 霓虹品牌 + 牌扇 ---------- */
+.gr-neon {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  color: var(--gr-gold);
+  text-shadow:
+    0 0 12px rgba(230, 184, 76, 0.6),
+    0 0 32px rgba(230, 184, 76, 0.25);
+}
+
+.gr-home .gr-title {
+  text-shadow:
+    0 0 10px rgba(230, 184, 76, 0.5),
+    0 0 30px rgba(230, 184, 76, 0.3),
+    0 0 60px rgba(230, 184, 76, 0.18);
+}
+
+.gr-fan {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 116px;
+  margin: 6px 0 18px;
+}
+
+.gr-fan-card {
+  width: 62px;
+  height: 90px;
+  border-radius: 9px;
+  border: 1px solid var(--gr-line-strong);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.04) 0 3px, transparent 3px 7px),
+    linear-gradient(160deg, var(--gr-felt-2), var(--gr-felt));
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.5);
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  margin-left: -16px;
+  animation: grFanIn 0.5s ease both;
+}
+
+.gr-fan-card:first-child {
+  margin-left: 0;
+}
+
+.gr-fan-card:nth-child(2) { animation-delay: 0.06s; }
+.gr-fan-card:nth-child(3) { animation-delay: 0.12s; }
+.gr-fan-card:nth-child(4) { animation-delay: 0.18s; }
+.gr-fan-card:nth-child(5) { animation-delay: 0.24s; }
+
+.gr-fan-card.joker {
+  border-color: rgba(255, 70, 85, 0.55);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.05) 0 3px, transparent 3px 7px),
+    linear-gradient(160deg, rgba(255, 70, 85, 0.28), rgba(255, 70, 85, 0.06));
+  box-shadow:
+    0 0 20px rgba(255, 70, 85, 0.35),
+    0 12px 26px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes grFanIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .gr-fan {
+    height: 96px;
+  }
+
+  .gr-fan-card {
+    width: 50px;
+    height: 74px;
+    border-radius: 7px;
+    font-size: 1.2rem;
+    margin-left: -12px;
+  }
+}
+
+/* ---------- 大厅（单列 · 圆桌等牌友） ---------- */
+.gr-lobby {
+  max-width: 640px;
+  margin: 0 auto;
+  padding-top: 8px;
+  text-align: center;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gr-room-head {
+  margin-bottom: 10px;
+}
+
+.gr-room-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gr-cream-faint);
+  margin-bottom: 8px;
+}
+
+.gr-lobby-table {
+  max-width: 620px;
+  margin: 10px auto 18px;
+}
+
+.gr-lobby .gr-room-code {
+  font-size: clamp(1.5rem, 4vw, 1.9rem);
+  letter-spacing: 0.22em;
+}
+
+.gr-lobby-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 2;
+}
+
+.gr-lobby-count {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gr-gold);
+  text-shadow: 0 0 18px rgba(230, 184, 76, 0.35);
+}
+
+.gr-lobby-count span {
+  font-size: 1rem;
+  color: var(--gr-cream-faint);
+  font-weight: 400;
+}
+
+.gr-lobby-status {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--gr-cream-dim);
+  letter-spacing: 0.04em;
+}
+
+.gr-lobby-seat {
+  position: absolute;
+  width: 112px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: grFanIn 0.5s ease both;
+}
+
+.gr-lobby-seat-avatar {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(230, 184, 76, 0.08);
+  border: 1px solid var(--gr-line-strong);
+  font-size: 1.35rem;
+}
+
+.gr-lobby-seat.you .gr-lobby-seat-avatar {
+  border-color: var(--gr-gold);
+  box-shadow: 0 0 14px rgba(230, 184, 76, 0.4);
+}
+
+.gr-lobby-seat-avatar.empty {
+  background: transparent;
+  border-style: dashed;
+  color: var(--gr-cream-faint);
+}
+
+.gr-lobby-seat-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--gr-felt);
+  background: var(--gr-gold);
+}
+
+.gr-lobby-seat-dot.off {
+  background: var(--gr-cream-faint);
+}
+
+.gr-lobby-seat-name {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--gr-cream);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gr-lobby-seat-name.dim {
+  color: var(--gr-cream-faint);
+}
+
+.gr-lobby-seat-tag {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  padding: 0 5px;
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
+.gr-lobby-seat-tag.host {
+  color: var(--gr-gold);
+  background: var(--gr-gold-soft);
+  border: 1px solid var(--gr-gold);
+}
+
+.gr-lobby-seat-tag.you {
+  color: var(--gr-crimson);
+  background: var(--gr-crimson-soft);
+  border: 1px solid var(--gr-crimson);
+}
+
+.gr-lobby-seat .gr-identicon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.gr-lobby .gr-lobby-actions,
+.gr-lobby .gr-rules {
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.gr-lobby .gr-rules {
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .gr-lobby-seat {
+    width: 88px;
+  }
+
+  .gr-lobby-seat-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .gr-lobby-count {
+    font-size: 1.8rem;
+  }
+}
+
+/* 房号行（精简：房号 + 分享图标） */
+.gr-room-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.gr-room-share {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border: 1px solid var(--gr-line-strong);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--gr-cream-dim);
+  font-size: 1rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.gr-room-share:hover {
+  border-color: var(--gr-gold);
+  color: var(--gr-gold);
+}
+
+.gr-room-copied {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--gr-gold);
+  min-height: 1.2em;
+}
+
+/* ---------- 轮到你发言卡 ---------- */
+.gr-say-card {
+  border: 1px solid var(--gr-gold);
+  border-radius: var(--gr-r-lg);
+  padding: 14px 16px;
+  background: linear-gradient(180deg, rgba(230, 184, 76, 0.1), rgba(13, 27, 21, 0.5));
+  box-shadow: 0 0 24px rgba(230, 184, 76, 0.2);
+  margin-bottom: 16px;
+  animation: grRise 0.35s ease both;
+}
+
+.gr-say-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.gr-say-label {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+}
+
+.gr-say-count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--gr-cream-faint);
+}
+
+/* ---------- 可投票座位：金色呼吸描边 ---------- */
+.gr-seat.votable .gr-card-avatar {
+  box-shadow: 0 0 0 3px rgba(230, 184, 76, 0.18);
+  transition: box-shadow 0.15s ease;
+}
+
+.gr-seat.votable:hover .gr-card-avatar {
+  box-shadow: 0 0 0 3px rgba(230, 184, 76, 0.45), 0 0 16px rgba(230, 184, 76, 0.4);
+}
+
+/* ---------- 发言记录：当前发言者高亮 ---------- */
+.gr-speech-row.speaking {
+  border-color: var(--gr-gold);
+  background: rgba(230, 184, 76, 0.08);
+}
+
+/* ---------- 词条：圆桌中心小胶囊 ---------- */
+.gr-word-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--gr-line-strong);
+  border-radius: var(--gr-r-pill);
+  padding: 3px 12px;
+  background: var(--gr-gold-soft);
+}
+
+.gr-word-pill-label {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  color: var(--gr-cream-faint);
+}
+
+.gr-word-pill-value {
+  font-family: var(--font-sans);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+  text-shadow: 0 0 12px rgba(230, 184, 76, 0.3);
+}
+
+/* ---------- 词：圆桌中心主视觉 ---------- */
+.gr-word-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.gr-word-center-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  color: var(--gr-cream-faint);
+  text-transform: uppercase;
+}
+
+.gr-word-center-value {
+  font-family: var(--font-sans);
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--gr-gold);
+  text-shadow: 0 0 18px rgba(230, 184, 76, 0.4);
+}
+
+/* ---------- 顶部操作（排行 + 钱包） ---------- */
+.gr-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- 积分排行榜 ---------- */
+.gr-lb-modal {
+  max-width: 480px;
+}
+
+.gr-lb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.gr-lb-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gr-cream);
+}
+
+.gr-lb-close {
+  border: none;
+  background: transparent;
+  color: var(--gr-cream-faint);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.gr-lb-close:hover {
+  color: var(--gr-crimson);
+}
+
+.gr-lb-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--gr-line);
+  border-radius: var(--gr-r-pill);
+  background: rgba(0, 0, 0, 0.3);
+  margin-bottom: 14px;
+}
+
+.gr-lb-tabs button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--gr-cream-dim);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--gr-r-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gr-lb-tabs button.on {
+  color: #1a1203;
+  background: linear-gradient(180deg, var(--gr-gold-bright), var(--gr-gold));
+}
+
+.gr-lb-me {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border-radius: var(--gr-r-md);
+  border: 1px solid var(--gr-line-strong);
+  background: rgba(230, 184, 76, 0.06);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--gr-cream-dim);
+}
+
+.gr-lb-me-item b {
+  color: var(--gr-gold);
+  font-weight: 700;
+}
+
+.gr-lb-rules {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--gr-cream-faint);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.gr-lb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.gr-lb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--gr-line);
+}
+
+.gr-lb-row.me {
+  border-color: var(--gr-gold);
+  background: rgba(230, 184, 76, 0.08);
+}
+
+.gr-lb-rank {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gr-cream-faint);
+  width: 26px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.gr-lb-rank.top {
+  color: var(--gr-gold);
+}
+
+.gr-lb-avatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+
+.gr-lb-avatar .gr-identicon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.gr-lb-addr {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--gr-cream);
+}
+
+.gr-lb-row.me .gr-lb-addr {
+  color: var(--gr-gold);
+  font-weight: 700;
+}
+
+.gr-lb-points {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+}
+
+.gr-lb-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--gr-cream-faint);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.gr-lb-hist-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gr-gold);
+  margin-bottom: 8px;
+}
+
+.gr-lb-hist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.gr-lb-hist-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--gr-cream-dim);
+}
+
+.gr-lb-hist-result {
+  flex-shrink: 0;
+}
+
+.gr-lb-hist-role {
+  flex-shrink: 0;
+  color: var(--gr-gold-dim);
+}
+
+.gr-lb-hist-words {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gr-cream);
+}
+
+.gr-lb-hist-points {
+  flex-shrink: 0;
+  color: var(--gr-gold);
+  font-weight: 700;
+}
+
+/* ---------- 我的模块（链上身份账本） ---------- */
+.gr-my-modal {
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.gr-my-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--gr-line);
+}
+
+.gr-my-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gr-my-identicon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid var(--gr-line-strong);
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+.gr-my-profile-id {
+  min-width: 0;
+}
+
+.gr-my-foot {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.gr-my-foot .gr-ghost {
+  flex: 1;
+}
+
+.gr-my-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gr-gold-dim);
+  margin-bottom: 4px;
+}
+
+.gr-my-title {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: var(--gr-cream);
+}
+
+.gr-my-addr {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--gr-cream-faint);
+  margin-top: 5px;
+}
+
+.gr-my-section {
+  margin-bottom: 22px;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gr-my-section:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.gr-my-section:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.gr-my-section:nth-child(4) {
+  animation-delay: 0.18s;
+}
+
+.gr-my-section-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gr-gold);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gr-my-section-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gr-line), transparent);
+}
+
+.gr-my-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.gr-my-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  border-radius: var(--gr-r-md);
+  border: 1px solid var(--gr-line);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.18));
+}
+
+.gr-my-stat .k {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gr-cream-faint);
+}
+
+.gr-my-stat .v {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--gr-gold);
+  text-shadow: 0 0 16px rgba(230, 184, 76, 0.28);
+}
+
+.gr-my-hist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gr-my-hist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--gr-r-sm);
+  border-left: 2px solid var(--gr-line);
+  background: rgba(0, 0, 0, 0.22);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--gr-cream-dim);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.gr-my-hist-row:hover {
+  border-left-color: var(--gr-gold);
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.gr-my-hist-result {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.gr-my-hist-role {
+  flex-shrink: 0;
+  color: var(--gr-gold-dim);
+}
+
+.gr-my-hist-points {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--gr-gold);
+  font-weight: 700;
+}
+
+.gr-my-more {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px dashed var(--gr-line-strong);
+  border-radius: var(--gr-r-md);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--gr-cream-dim);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.gr-my-more:hover {
+  color: var(--gr-gold);
+  border-color: var(--gr-gold);
+}
+
+.gr-my-empty {
+  text-align: center;
+  padding: 20px;
+  color: var(--gr-cream-faint);
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  border: 1px dashed var(--gr-line);
+  border-radius: var(--gr-r-md);
+}
+
+/* ---------- 我的页面（独立页 /me） ---------- */
+.gr-me {
+  max-width: 760px;
+  padding-top: 36px;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gr-me-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+/* 档案卡（hero） */
+.gr-me-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 32px 24px 28px;
+  margin-bottom: 30px;
+  border: 1px solid var(--gr-line-strong);
+  border-radius: var(--gr-r-xl);
+  background:
+    radial-gradient(140% 120% at 50% -20%, rgba(230, 184, 76, 0.16), transparent 60%),
+    linear-gradient(180deg, var(--gr-felt-2), var(--gr-felt));
+  box-shadow: var(--gr-sh-2);
+  text-align: center;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gr-me-hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gr-gold), transparent);
+  opacity: 0.8;
+}
+
+.gr-me-hero-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  border: 1px solid var(--gr-gold);
+  image-rendering: pixelated;
+  box-shadow: 0 0 26px rgba(230, 184, 76, 0.2);
+  margin-bottom: 6px;
+}
+
+.gr-me-title {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--gr-cream);
+}
+
+.gr-me-addr {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--gr-cream-faint);
+  margin-bottom: 8px;
+}
+
+.gr-me-hero-rank {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+  text-shadow: 0 0 20px rgba(230, 184, 76, 0.45);
+}
+
+.gr-me-hero-mint {
+  margin-top: 6px;
+  border: 1px solid var(--gr-gold);
+  border-radius: var(--gr-r-pill);
+  background: var(--gr-gold-soft);
+  color: var(--gr-gold);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 9px 22px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.gr-me-hero-mint:hover:not(:disabled) {
+  background: var(--gr-gold);
+  color: #1a1203;
+}
+
+.gr-me-hero-mint:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gr-me-hero-norank {
+  font-size: 0.86rem;
+  color: var(--gr-cream-faint);
+}
+
+/* 荣誉墙：紧凑徽章，自动填充多列 */
+.gr-me-honor-wall {
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.gr-honor-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 10px 12px;
+  border: 1px solid var(--gr-line);
+  border-radius: var(--gr-r-md);
+  background: rgba(0, 0, 0, 0.22);
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.gr-honor-badge:hover {
+  border-color: var(--gr-gold);
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.gr-honor-badge-emoji {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.gr-honor-badge-title {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gr-gold);
+  line-height: 1.3;
+}
+
+.gr-honor-badge-desc {
+  font-size: 0.7rem;
+  color: var(--gr-cream-faint);
+  line-height: 1.4;
+}
+
+.gr-me-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .gr-me-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.gr-me-section {
+  margin-bottom: 30px;
+  animation: grRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gr-me-section-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gr-gold);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gr-me-section-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gr-line), transparent);
+}
+
+.gr-me-count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--gr-gold);
+  background: var(--gr-gold-soft);
+  border: 1px solid var(--gr-gold);
+  border-radius: var(--gr-r-pill);
+  padding: 2px 9px;
+}
+
+.gr-me-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.gr-me-empty-text {
+  font-size: 0.95rem;
+  color: var(--gr-cream-dim);
+}
